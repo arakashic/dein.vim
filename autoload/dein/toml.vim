@@ -5,10 +5,10 @@
 "
 function! dein#toml#parse(text) abort
   let input = {
-  \   'text': a:text,
-  \   'p': 0,
-  \   'length': strlen(a:text),
-  \}
+        \   'text': a:text,
+        \   'p': 0,
+        \   'length': strlen(a:text),
+        \}
   return s:_parse(input)
 endfunction
 
@@ -75,8 +75,8 @@ function! s:_error(input) abort
   endwhile
 
   throw printf("Text.TOML: Illegal toml format at L%d:`%s':%d.",
-      \ len(split(a:input.text[: a:input.p], "\n", 1)),
-      \ join(buf, ''), a:input.p)
+        \ len(split(a:input.text[: a:input.p], "\n", 1)),
+        \ join(buf, ''), a:input.p)
 endfunction
 
 function! s:_parse(input) abort
