@@ -97,17 +97,17 @@ endfunction
 
 function! dein#plugin#set_hook(name, hook_name, hook_func)
   if !has_key(g:dein#_plugins, a:name)
-    call dein#util#_error(print('Plugin %s not registered.', a:name))
+    call dein#util#_error(printf('Plugin %s not registered.', a:name))
     return
   endif
   if type(a:hook_func) != v:t_func " if not funcref
-    call dein#util#_error(print('hook_func must be FuncRef.', string(a:hook_func)))
+    call dein#util#_error(printf('hook_func must be FuncRef.', string(a:hook_func)))
     return
   endif
   if has_key(s:hooks_template, a:hook_name)
     let g:dein#_plugins[a:name].hooks[a:hook_name] = a:hook_func
   else
-    call dein#util#_error(print('Invalid hook name %s.', a:hook_name))
+    call dein#util#_error(printf('Invalid hook name %s.', a:hook_name))
   endif
 endfunction
 
@@ -372,10 +372,6 @@ function! dein#plugin#source(plugin, sourced) abort
       silent! execute map[0].'unmap' map[1]
     endfor
     let a:plugin.dummy_mappings = []
-  endif
-
-  if !a:plugin.merged || get(a:plugin, 'local', 0)
-    call dein#rtp#insert(a:plugin.rtp)
   endif
 endfunction
 
