@@ -5,6 +5,10 @@
 "=============================================================================
 
 function! dein#autoload#_source(...) abort
+    if has('vim_starting')
+        call dein#util#_error('calling autoload#source in vim starting')
+    endif
+
     let plugins = empty(a:000) ? values(g:dein#_plugins) :
                 \ dein#util#_convert2list(a:1)
     if empty(plugins)
@@ -16,22 +20,14 @@ function! dein#autoload#_source(...) abort
                     \       'get(g:dein#_plugins, v:val, {})')
     endif
 
-    let rtps = dein#util#_split_rtp(&runtimepath)
-    let index = index(rtps, dein#util#_get_runtime_path())
-    if index < 0
-        return 1
-    endif
-
     let sourced = []
     for plugin in filter(plugins,
                 \ "!empty(v:val) && !v:val.sourced && v:val.rtp !=# ''")
-        call s:source_plugin(rtps, index, plugin, sourced)
+        call dein#plugin#source(plugin, sourced)
     endfor
 
     let filetype_before = dein#util#_redir('autocmd FileType')
-    let &runtimepath = dein#util#_join_rtp(rtps, &runtimepath, '')
-
-    call dein#call_hook('source', sourced)
+    call dein#rtp#commit()
 
     " Reload script files.
     for plugin in sourced
@@ -69,9 +65,7 @@ function! dein#autoload#_source(...) abort
         let &filetype = &filetype
     endif
 
-    if !has('vim_starting')
-        call dein#call_hook('post_source', sourced)
-    endif
+    call dein#plugin#post_source(sourced)
 endfunction
 
 function! dein#autoload#_on_default_event(event) abort
@@ -181,7 +175,7 @@ function! dein#autoload#_on_map(mapping, name, mode) abort
 
     let input = s:get_input()
 
-    call dein#source(a:name)
+    call dein#autoload#_source(a:name)
 
     if a:mode ==# 'v' || a:mode ==# 'x'
         call feedkeys('gv', 'n')
@@ -231,60 +225,6 @@ function! dein#autoload#_dummy_complete(arglead, cmdline, cursorpos) abort
     endif
 
     return [a:arglead]
-endfunction
-
-function! s:source_plugin(rtps, index, plugin, sourced) abort
-    if a:plugin.sourced || index(a:sourced, a:plugin) >= 0
-        return
-    endif
-
-    call add(a:sourced, a:plugin)
-
-    " Load dependencies
-    for name in get(a:plugin, 'depends', [])
-        if !has_key(g:dein#_plugins, name)
-            call dein#util#_error(printf(
-                        \ 'Plugin name "%s" is not found.', name))
-            continue
-        endif
-
-        if !a:plugin.lazy && g:dein#_plugins[name].lazy
-            call dein#util#_error(printf(
-                        \ 'Not lazy plugin "%s" depends lazy "%s" plugin.',
-                        \ a:plugin.name, name))
-            continue
-        endif
-
-        call s:source_plugin(a:rtps, a:index, g:dein#_plugins[name], a:sourced)
-    endfor
-
-    let a:plugin.sourced = 1
-
-    for on_source in filter(dein#util#_get_lazy_plugins(),
-                \ "index(get(v:val, 'on_source', []), a:plugin.name) >= 0")
-        call s:source_plugin(a:rtps, a:index, on_source, a:sourced)
-    endfor
-
-    if has_key(a:plugin, 'dummy_commands')
-        for command in a:plugin.dummy_commands
-            silent! execute 'delcommand' command[0]
-        endfor
-        let a:plugin.dummy_commands = []
-    endif
-
-    if has_key(a:plugin, 'dummy_mappings')
-        for map in a:plugin.dummy_mappings
-            silent! execute map[0].'unmap' map[1]
-        endfor
-        let a:plugin.dummy_mappings = []
-    endif
-
-    if !a:plugin.merged || get(a:plugin, 'local', 0)
-        call insert(a:rtps, a:plugin.rtp, a:index)
-        if isdirectory(a:plugin.rtp.'/after')
-            call dein#util#_add_after(a:rtps, a:plugin.rtp.'/after')
-        endif
-    endif
 endfunction
 
 function! s:reset_ftplugin() abort

@@ -3,12 +3,7 @@
 " AUTHOR:  Shougo Matsushita <Shougo.Matsu at gmail.com>
 " License: MIT license
 "=============================================================================
-
-" Global options definition."
-let g:dein#enable_name_conversion =
-            \ get(g:, 'dein#enable_name_conversion', 0)
-
-
+-
 let s:git = dein#types#git#define()
 
 function! dein#parse#_add(repo, options) abort
@@ -34,7 +29,7 @@ endfunction
 function! dein#parse#_init(repo, options) abort
     let repo = dein#util#_expand(a:repo)
     let plugin = has_key(a:options, 'type') ?
-                \ dein#util#_get_type(a:options.type).init(repo, a:options) :
+                \ dein#parse#_get_type(a:options.type).init(repo, a:options) :
                 \ s:git.init(repo, a:options)
     if empty(plugin)
         let plugin = s:check_type(repo, a:options)
@@ -117,12 +112,13 @@ function! dein#parse#_dict(plugin) abort
     endif
 
     if !has_key(a:plugin, 'merged')
-        let plugin.merged = !plugin.lazy
-                    \ && plugin.normalized_name !=# 'dein'
-                    \ && !has_key(plugin, 'local')
-                    \ && !has_key(plugin, 'build')
-                    \ && !has_key(a:plugin, 'if')
-                    \ && stridx(plugin.rtp, dein#util#_get_base_path()) == 0
+        let plugin.merged = 0
+        " !plugin.lazy
+        "             \ && plugin.normalized_name !=# 'dein'
+        "             \ && !has_key(plugin, 'local')
+        "             \ && !has_key(plugin, 'build')
+        "             \ && !has_key(a:plugin, 'if')
+        "             \ && stridx(plugin.rtp, dein#util#_get_base_path()) == 0
     endif
 
     if has_key(a:plugin, 'if') && type(a:plugin.if) == type('')
@@ -173,7 +169,7 @@ function! dein#parse#_load_toml(filename, default) abort
             endif
 
             let options = extend(plugin, a:default, 'keep')
-            call dein#add(plugin.repo, options)
+            call dein#parse#_add(plugin.repo, options)
         endfor
     endif
 
@@ -263,7 +259,7 @@ function! dein#parse#_local(localdir, options, includes) abort
         if has_key(g:dein#_plugins, options.name)
             call dein#config(options.name, options)
         else
-            call dein#add(dir, options)
+            call dein#parse#_add(dir, options)
         endif
     endfor
 endfunction

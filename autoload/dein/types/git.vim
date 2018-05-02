@@ -33,10 +33,11 @@ function! s:type.init(repo, options) abort
 
   if a:repo =~# '^/\|^\a:[/\\]' && s:is_git_dir(a:repo.'/.git')
     " Local repository.
-    return { 'type': 'git', 'local': 1 }
+    return { 'type': 'git', 'local': 0, 'path' : a:repo }
   elseif a:repo =~#
         \ '//\%(raw\|gist\)\.githubusercontent\.com/\|/archive/[^/]\+\.zip$'
-    return {}
+      call dein#util#_error('Unsupported repo path '.a:repo)
+      return {}
   endif
 
   let uri = self.get_uri(a:repo, a:options)
@@ -48,9 +49,10 @@ function! s:type.init(repo, options) abort
   let directory = substitute(directory, '^https:/\+\|^git@', '', '')
   let directory = substitute(directory, ':', '/', 'g')
 
-  return { 'type': 'git',
+  return { 'type': 'git', 'local' : 0,
         \  'path': dein#util#_get_base_path().'/repos/'.directory }
 endfunction
+
 function! s:type.get_uri(repo, options) abort
   if a:repo =~# '^/\|^\a:[/\\]'
     return s:is_git_dir(a:repo.'/.git') ? a:repo : ''

@@ -29,33 +29,27 @@ function! dein#util#_is_mac() abort
 endfunction
 
 function! dein#util#_get_base_path() abort
-    return g:dein#_base_path
+    if g:dein#_base_path !=# ''
+        return g:dein#_base_path
+    else
+        call dein#util#_error('g:dein#_base_path uninitilized')
+    endif
 endfunction
 
 function! dein#util#_get_runtime_path() abort
     if g:dein#_runtime_path !=# ''
         return g:dein#_runtime_path
+    else
+        call dein#util#_error('g:dein#_runtime_path uninitilized')
     endif
-
-    let g:dein#_runtime_path = dein#util#_get_cache_path() . '/.dein'
-    if !isdirectory(g:dein#_runtime_path)
-        call mkdir(g:dein#_runtime_path, 'p')
-    endif
-    return g:dein#_runtime_path
 endfunction
 
 function! dein#util#_get_cache_path() abort
     if g:dein#_cache_path !=# ''
         return g:dein#_cache_path
+    else
+        call dein#util#_error('g:dein#_cache_path uninitilized')
     endif
-
-    let g:dein#_cache_path = get(g:,
-                \ 'dein#cache_directory', g:dein#_base_path)
-                \ . '/.cache/' . fnamemodify(dein#util#_get_myvimrc(), ':t')
-    if !isdirectory(g:dein#_cache_path)
-        call mkdir(g:dein#_cache_path, 'p')
-    endif
-    return g:dein#_cache_path
 endfunction
 
 function! dein#util#_get_vimrcs(vimrcs) abort
@@ -239,13 +233,13 @@ function! dein#util#_check_vimrcs() abort
     let ret = !empty(filter(map(copy(g:dein#_vimrcs), 'getftime(expand(v:val))'),
                 \ 'time < v:val'))
     if ret
-        call dein#clear_state()
+        call dein#util#_clear_state()
     endif
 
     if [string(g:dein#_cache_version)] +
                 \ sort(map(values(g:dein#_plugins), 'v:val.repo'))
                 \ !=# dein#util#_load_merged_plugins()
-        call dein#recache_runtimepath()
+        call dein#install#_recache_runtimepath()
     endif
 
     return ret
@@ -281,8 +275,7 @@ function! dein#util#_save_state(is_starting) abort
     endif
 
     let g:dein#_vimrcs = dein#util#_uniq(g:dein#_vimrcs)
-    let &runtimepath = dein#util#_join_rtp(dein#util#_uniq(
-                \ dein#util#_split_rtp(&runtimepath)), &runtimepath, '')
+    call dein#rtp#dedup()
 
     call dein#util#_save_cache(g:dein#_vimrcs, 1, a:is_starting)
 
@@ -352,7 +345,8 @@ endfunction
 
 function! dein#util#_begin(path, vimrcs) abort
     if !exists('#dein')
-        call dein#_init()
+        call dein#util#_error('Dein is not initialized, call dein#init() first')
+        return 1
     endif
 
     if v:version < 704
@@ -366,14 +360,8 @@ function! dein#util#_begin(path, vimrcs) abort
     endif
 
     let g:dein#_block_level += 1
-    let g:dein#_base_path = dein#util#_expand(a:path)
-    if g:dein#_base_path[-1:] ==# '/'
-        let g:dein#_base_path = g:dein#_base_path[: -2]
-    endif
-    call dein#util#_get_runtime_path()
-    call dein#util#_get_cache_path()
+
     let g:dein#_vimrcs = dein#util#_get_vimrcs(a:vimrcs)
-    let g:dein#_hook_add = ''
 
     " Filetype off
     if exists('g:did_load_filetypes') || has('nvim')
@@ -385,28 +373,8 @@ function! dein#util#_begin(path, vimrcs) abort
         execute g:dein#_off2
     endif
 
-    if !has('vim_starting')
-        execute 'set rtp-='.fnameescape(g:dein#_runtime_path)
-        execute 'set rtp-='.fnameescape(g:dein#_runtime_path.'/after')
-    endif
-
     " Insert dein runtimepath to the head in 'runtimepath'.
-    let rtps = dein#util#_split_rtp(&runtimepath)
-    let idx = index(rtps, $VIMRUNTIME)
-    if idx < 0
-        call dein#util#_error('Invalid runtimepath.')
-        return 1
-    endif
-    if fnamemodify(a:path, ':t') ==# 'plugin'
-                \ && index(rtps, fnamemodify(a:path, ':h')) >= 0
-        call dein#util#_error('You must not set the installation directory'
-                    \ .' under "&runtimepath/plugin"')
-        return 1
-    endif
-    call insert(rtps, g:dein#_runtime_path, idx)
-    call dein#util#_add_after(rtps, g:dein#_runtime_path.'/after')
-    let &runtimepath = dein#util#_join_rtp(rtps,
-                \ &runtimepath, g:dein#_runtime_path)
+    call dein#rtp#init()
 endfunction
 
 function! dein#util#_end() abort
@@ -417,62 +385,53 @@ function! dein#util#_end() abort
 
     let g:dein#_block_level -= 1
 
-    if !has('vim_starting')
-        call dein#source(filter(values(g:dein#_plugins),
-                    \ "!v:val.lazy && !v:val.sourced && v:val.rtp !=# ''"))
-    endif
+    call dein#plugin#load_all()
 
-    " Add runtimepath
-    let rtps = dein#util#_split_rtp(&runtimepath)
-    let index = index(rtps, g:dein#_runtime_path)
-    if index < 0
-        call dein#util#_error('Invalid runtimepath.')
-        return 1
-    endif
+"     if !has('vim_starting')
+"         call dein#source(filter(values(g:dein#_plugins),
+"                     \ "!v:val.lazy && !v:val.sourced && v:val.rtp !=# ''"))
+"     endif
 
-    let depends = []
-    let sourced = has('vim_starting') &&
-                \ (!exists('&loadplugins') || &loadplugins)
-    for plugin in filter(values(g:dein#_plugins),
-                \ "!v:val.lazy && !v:val.sourced && v:val.rtp !=# ''")
-        " Load dependencies
-        if has_key(plugin, 'depends')
-            let depends += plugin.depends
-        endif
+"     let depends = []
+"     let sourced = has('vim_starting') &&
+"                 \ (!exists('&loadplugins') || &loadplugins)
+"     for plugin in filter(values(g:dein#_plugins),
+"                 \ "!v:val.lazy && !v:val.sourced && v:val.rtp !=# ''")
+"         " Load dependencies
+"         if has_key(plugin, 'depends')
+"             let depends += plugin.depends
+"         endif
 
-        if !plugin.merged
-            call insert(rtps, plugin.rtp, index)
-            if isdirectory(plugin.rtp.'/after')
-                call dein#util#_add_after(rtps, plugin.rtp.'/after')
-            endif
-        endif
+"         if !plugin.merged
+"             call dein#rtp#insert(plugin.rtp)
+"         endif
 
-        let plugin.sourced = sourced
-    endfor
-    let &runtimepath = dein#util#_join_rtp(rtps, &runtimepath, '')
+"         let plugin.sourced = sourced
+"     endfor
+"     call dein#rtp#commit()
 
-    call dein#util#_check_vimrcs()
+"     call dein#util#_check_vimrcs()
 
-    if !empty(depends)
-        call dein#source(depends)
-    endif
+"     if !empty(depends)
+"         call dein#autoload#_source(depends)
+"     endif
 
-    if g:dein#_hook_add !=# ''
-        call dein#util#_execute_hook({}, g:dein#_hook_add)
-    endif
+"     if g:dein#_hook_add !=# ''
+"         call dein#util#_execute_hook({}, g:dein#_hook_add)
+"     endif
 
-    for [event, plugins] in filter(items(g:dein#_event_plugins),
-                \ "exists('##' . v:val[0])")
-        execute printf('autocmd dein-events %s * call '
-                    \. 'dein#autoload#_on_event("%s", %s)',
-                    \ event, event, string(plugins))
-    endfor
+"     for [event, plugins] in filter(items(g:dein#_event_plugins),
+"                 \ "exists('##' . v:val[0])")
+"         execute printf('autocmd dein-events %s * call '
+"                     \. 'dein#autoload#_on_event("%s", %s)',
+"                     \ event, event, string(plugins))
+"     endfor
 
-    if !has('vim_starting')
-        call dein#call_hook('add')
-        call dein#call_hook('source')
-        call dein#call_hook('post_source')
-    endif
+"     if !has('vim_starting')
+"         call dein#util#_call_hook('add')
+"         call dein#util#_call_hook('source')
+"         call dein#util#_call_hook('post_source')
+"     endif
 endfunction
 
 function! dein#util#_config(arg, dict) abort
@@ -553,26 +512,16 @@ function! dein#util#_tsort(plugins) abort
     return sorted
 endfunction
 
-function! dein#util#_split_rtp(runtimepath) abort
-    if stridx(a:runtimepath, '\,') < 0
-        return split(a:runtimepath, ',')
-    endif
-
-    let split = split(a:runtimepath, '\\\@<!\%(\\\\\)*\zs,')
-    return map(split,'substitute(v:val, ''\\\([\\,]\)'', ''\1'', ''g'')')
-endfunction
-
-function! dein#util#_join_rtp(list, runtimepath, rtp) abort
-    return (stridx(a:runtimepath, '\,') < 0 && stridx(a:rtp, ',') < 0) ?
-                \ join(a:list, ',') : join(map(copy(a:list), 's:escape(v:val)'), ',')
-endfunction
-
-function! dein#util#_add_after(rtps, path) abort
-    let idx = index(a:rtps, $VIMRUNTIME)
-    call insert(a:rtps, a:path, (idx <= 0 ? -1 : idx + 1))
-endfunction
-
 function! dein#util#_expand(path) abort
+    let path = (a:path =~# '^\~') ? fnamemodify(a:path, ':p') :
+                \ (a:path =~# '^\$\h\w*') ? substitute(a:path,
+                \               '^\$\h\w*', '\=eval(submatch(0))', '') :
+                \ a:path
+    return (s:is_windows && path =~# '\\') ?
+                \ dein#util#_substitute_path(path) : path
+endfunction
+
+function! dein#util#expand_path(path) abort
     let path = (a:path =~# '^\~') ? fnamemodify(a:path, ':p') :
                 \ (a:path =~# '^\$\h\w*') ? substitute(a:path,
                 \               '^\$\h\w*', '\=eval(submatch(0))', '') :
@@ -696,9 +645,11 @@ function! dein#util#_check_install(plugins) abort
                         \ string(map(invalids, 'v:val')))
             return -1
         endif
+        let plugins = map(dein#util#_convert2list(a:plugins), 'dein#get(v:val)')
+    else
+        let plugins = values(g:dein#_plugins)
     endif
-    let plugins = empty(a:plugins) ? values(dein#get()) :
-                \ map(dein#util#_convert2list(a:plugins), 'dein#get(v:val)')
+
     let plugins = filter(plugins, '!isdirectory(v:val.path)')
     if empty(plugins) | return 0 | endif
     call dein#util#_notify('Not installed plugins: ' .
@@ -712,11 +663,6 @@ endfunction
 
 function! s:skipempty(string) abort
     return filter(split(a:string, '\n'), "v:val !=# ''")
-endfunction
-
-function! s:escape(path) abort
-    " Escape a path for runtimepath.
-    return substitute(a:path, ',\|\\,\@=', '\\\0', 'g')
 endfunction
 
 function! s:sort(list, expr) abort
@@ -746,4 +692,73 @@ endfunction
 
 function! s:neovim_version() abort
     return str2float(matchstr(execute('version'), 'NVIM v\zs\d\.\d\.\d'))
+endfunction
+
+let s:print_level = -1
+function! s:get_indent(level) abort
+    if a:level == 0
+        return ''
+    endif
+
+    let i = a:level
+    let indent_str = ' +'
+    while i > 0
+        let indent_str .= '--'
+        let i -= 1
+    endwhile
+    let indent_str .= ' '
+    return indent_str
+endfunction
+
+function! s:is_simple_type(type) abort
+    return a:type < 2 || a:type > 4
+endfunction
+
+function! s:print_list(obj) abort
+    echom s:get_indent(s:print_level).'['
+    let s:print_level += 1
+    for item in a:obj
+        if s:is_simple_type(type(item))
+            echom s:get_indent(s:print_level).item
+        else
+            call s:print(item)
+        endif
+    endfor
+    let s:print_level -= 1
+    echom s:get_indent(s:print_level).']'
+endfunction
+
+function! s:print_dict(obj) abort
+    echom s:get_indent(s:print_level).'{'
+    let s:print_level += 1
+    for item in items(a:obj)
+        if s:is_simple_type(type(item[1]))
+            echom s:get_indent(s:print_level).item[0].': '.item[1]
+        elseif type(item[1]) == 2
+            echom s:get_indent(s:print_level).item[0].': '.string(item[1])
+        else
+            echom s:get_indent(s:print_level).item[0].': '
+            call s:print(item[1])
+        endif
+    endfor
+    let s:print_level -= 1
+    echom s:get_indent(s:print_level).'}'
+endfunction
+
+function! s:print(obj) abort
+    let s:print_level += 1
+    if s:is_simple_type(type(a:obj))
+        echom s:get_indent(s:print_level).a:obj
+    elseif type(a:obj) == type({})
+        call s:print_dict(a:obj)
+    elseif type(a:obj) == type([])
+        call s:print_list(a:obj)
+    elseif type(a:obj) == 2
+        echom s:get_indent(s:print_level).string(a:obj)
+    endif
+    let s:print_level -= 1
+endfunction
+
+function! dein#util#print_data(data) abort
+    call s:print(a:data)
 endfunction

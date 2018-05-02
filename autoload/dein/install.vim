@@ -433,8 +433,7 @@ function! dein#install#_remote_plugins() abort
 
     call dein#autoload#_source(remote_plugins)
 
-    let &runtimepath = dein#util#_join_rtp(dein#util#_uniq(
-                \ dein#util#_split_rtp(&runtimepath)), &runtimepath, '')
+    call dein#rtp#dedup()
 
     if exists(':UpdateRemotePlugins') == 2
         UpdateRemotePlugins
@@ -984,7 +983,7 @@ function! s:done(context) abort
     call s:notify(s:get_errored_message(a:context.errored_plugins))
 
     if a:context.update_type !=# 'check_update'
-        call dein#install#_recache_runtimepath()
+        " call dein#install#_recache_runtimepath()
     endif
     call s:notify(strftime('Done: (%Y/%m/%d %H:%M:%S)'))
 

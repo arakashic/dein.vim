@@ -4,14 +4,37 @@
 " License: MIT license
 "=============================================================================
 
-function! dein#_init() abort
+function! dein#init(path) abort
+    if !has('vim_starting')
+        return
+    endif
+
     let g:dein#_cache_version = 100
     let g:dein#name = ''
     let g:dein#plugin = {}
     let g:dein#_plugins = {}
-    let g:dein#_base_path = ''
+    let g:dein#_plugins_new = {}
+
+    let g:dein#enable_name_conversion = get(g:, 'dein#enable_name_conversion', 0)
+
+    let g:dein#_base_path = expand(a:path)
+    if g:dein#_base_path[-1:] ==# '/'
+        let g:dein#_base_path = g:dein#_base_path[: -2]
+    endif
+
     let g:dein#_cache_path = ''
+    let g:dein#_cache_path = g:dein#_base_path . '/.cache/'
+                \ . fnamemodify(dein#util#_get_myvimrc(), ':t')
+    if !isdirectory(g:dein#_cache_path)
+        call mkdir(g:dein#_cache_path, 'p')
+    endif
+
     let g:dein#_runtime_path = ''
+    let g:dein#_runtime_path = g:dein#_cache_path . '/.dein'
+    if !isdirectory(g:dein#_runtime_path)
+        call mkdir(g:dein#_runtime_path, 'p')
+    endif
+
     let g:dein#_hook_add = ''
     let g:dein#_ftplugin = {}
     let g:dein#_off1 = ''
@@ -76,8 +99,6 @@ function! dein#load_state(path, ...) abort
                 \ (!exists('&loadplugins') || &loadplugins || g:dein#_is_sudo))
         return 1
     endif
-    call dein#_init()
-    let g:dein#_base_path = expand(a:path)
 
     let state = get(g:, 'dein#cache_directory', g:dein#_base_path)
                 \ . '/state_' . g:dein#_progname . '.vim'
@@ -121,7 +142,7 @@ function! dein#end() abort
 endfunction
 
 function! dein#add(repo, ...) abort
-    return dein#parse#_add(a:repo, get(a:000, 0, {}))
+    return dein#plugin#add(a:repo, get(a:000, 0, {}))
 endfunction
 
 function! dein#local(dir, ...) abort
@@ -235,7 +256,7 @@ function! dein#config(arg, ...) abort
 endfunction
 
 function! dein#set_hook(name, hook_name, hook) abort
-    return dein#util#_set_hook(a:name, a:hook_name, a:hook)
+    return dein#plugin#set_hook(a:name, a:hook_name, a:hook)
 endfunction
 
 function! dein#save_state() abort
