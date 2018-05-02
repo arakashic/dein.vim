@@ -100,7 +100,7 @@ function! dein#plugin#set_hook(name, hook_name, hook_func)
     call dein#util#_error(print('Plugin %s not registered.', a:name))
     return
   endif
-  if type(a:hook_func) != 2 " if not funcref
+  if type(a:hook_func) != v:t_func " if not funcref
     call dein#util#_error(print('hook_func must be FuncRef.', string(a:hook_func)))
     return
   endif
@@ -160,7 +160,7 @@ function! s:set_options(plugin, options) abort
   endif
 
   if has_key(a:options, 'if')
-    if type(a:options.if) == type('')
+    if type(a:options.if) == v:t_string
       let a:plugin.if = eval(a:options.if)
     endif
   endif
@@ -172,8 +172,8 @@ function! s:set_lazy_handler(plugin, options) abort
         \ 'on_ft', 'on_path', 'on_cmd', 'on_func', 'on_map',
         \ 'on_source', 'on_event',
         \ ], { val -> has_key(a:options, val)
-        \             && type(a:options[val]) != type([])
-        \             && type(a:options[val]) != type({})
+        \             && type(a:options[val]) != v:t_list
+        \             && type(a:options[val]) != v:t_dict
         \ })
     let a:plugin[key] = [a:options[key]]
   endfor
@@ -217,11 +217,11 @@ endfunction
 
 function! s:generate_dummy_mappings(plugin, options) abort
   let a:plugin.dummy_mappings = []
-  let items = type(a:options.on_map) == type({}) ?
+  let items = type(a:options.on_map) == v:t_dict ?
         \ map(items(a:options.on_map),
         \   "[split(v:val[0], '\\zs'), dein#util#_convert2list(v:val[1])]") :
         \ map(copy(a:options.on_map),
-        \  "type(v:val) == type([]) ?
+        \  "type(v:val) == v:t_list ?
         \     [split(v:val[0], '\\zs'), v:val[1:]] :
         \     [['n', 'x'], [v:val]]")
   for [modes, mappings] in items
@@ -253,9 +253,9 @@ function! s:generate_dummy_mappings(plugin, options) abort
 endfunction
 
 function! dein#plugin#call_hook(plugins, hook) abort
-  if type(a:plugins) == type(s:plugin_template)
+  if type(a:plugins) == v:t_dict
     let l:p = a:plugins
-  elseif type(a:plugins) == type([])
+  elseif type(a:plugins) == v:t_list
     call dein#util#_error('call hook a:plugins is list')
   else
     call dein#util#_error('Wrong type of a:plugins')
@@ -264,7 +264,7 @@ function! dein#plugin#call_hook(plugins, hook) abort
   try
     " let g:dein#plugin = a:plugins
 
-    " if type(a:hook) == type('')
+    " if type(a:hook) == v:t_string
     "     call s:execute(a:hook)
     " else
     call call(l:p.hooks[a:hook], [])
