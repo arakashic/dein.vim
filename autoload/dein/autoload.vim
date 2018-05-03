@@ -18,9 +18,12 @@ function! dein#autoload#_source(...) abort
 
   let sourced = []
   for plugin in filter(plugins,
-        \ "!empty(v:val) && !v:val.sourced && v:val.rtp !=# ''")
+        \ {k, v -> !empty(v) && !v.sourced && v.rtp !=# ''})
     call dein#plugin#source(plugin, sourced)
   endfor
+  if empty(sourced)
+    return sourced
+  endif
 
   let filetype_before = dein#util#_redir('autocmd FileType')
   call dein#rtp#commit()
@@ -62,6 +65,7 @@ function! dein#autoload#_source(...) abort
   endif
 
   call dein#plugin#post_source(sourced)
+  return sourced
 endfunction
 
 function! dein#autoload#_on_default_event(event) abort
@@ -146,7 +150,12 @@ function! dein#autoload#_on_pre_cmd(name) abort
 endfunction
 
 function! dein#autoload#_on_cmd(command, name, args, bang, line1, line2) abort
-  call dein#source(a:name)
+  let l:sourced = dein#autoload#_source(a:name)
+
+  if empty(l:sourced)
+    echo a:name.' is disabled'
+    return
+  endif
 
   if exists(':' . a:command) != 2
     call dein#util#_error(printf('command %s is not found.', a:command))

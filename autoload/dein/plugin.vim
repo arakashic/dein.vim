@@ -43,7 +43,7 @@ let s:plugin_template = {
       \ 'type' : 'none',
       \ 'vcs' : {'rev' : '', 'frozen' : 0, 'timeout' : 60},
       \ 'rtp' : '',
-      \ 'lazy' : 0,
+      \ 'if' : 1,
       \ 'trusted' : 0,
       \ 'merged' : 0,
       \ 'sourced' : 0,
@@ -74,7 +74,7 @@ function! dein#plugin#add(repo, options) abort
   call s:set_options(plugin, a:options)
   if (has_key(g:dein#_plugins, plugin.name)
         \ && g:dein#_plugins[plugin.name].sourced)
-        \ || !get(plugin, 'if', 1)
+        " \ || !get(plugin, 'if', 1)
     " Skip already loaded or not enabled plugin.
     " call dein#util#_error('Plugin '.plugin.name.' skipped because it is already loaded or disabled')
     return {}
@@ -153,6 +153,10 @@ function! s:set_options(plugin, options) abort
     call extend(a:plugin.depends, a:options.depends)
   endif
 
+  if has_key(a:options, 'if')
+    let a:plugin.if = a:options.if
+  endif
+
   if !has_key(a:options, 'lazy')
     let a:plugin.lazy = s:is_lazy(a:options)
   endif
@@ -162,12 +166,6 @@ function! s:set_options(plugin, options) abort
       call dein#util#_error('Cannot merge a lazy-load plugin.')
     else 
       let a:plugin.merged = a:options.merged
-    endif
-  endif
-
-  if has_key(a:options, 'if')
-    if type(a:options.if) == v:t_string
-      let a:plugin.if = eval(a:options.if)
     endif
   endif
 endfunction
@@ -327,6 +325,11 @@ function! dein#plugin#source(plugin, sourced) abort
     return
   endif
   " echom 'load '.a:plugin.name
+
+  " check if the plugin is enabled
+  if !eval(a:plugin.if)
+    return
+  endif
 
   " Load dependencies
   for name in get(a:plugin, 'depends', [])
