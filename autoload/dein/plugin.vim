@@ -54,6 +54,20 @@ let s:plugin_template = {
 
 let s:git = dein#types#git#define()
 
+let g:dein#plugin#lazy_options = [
+      \ 'on_ft', 'on_path', 'on_cmd', 'on_func', 'on_map',
+      \ 'on_source', 'on_event',
+      \ ]
+
+function! s:is_lazy(options) abort
+  for l:opt in g:dein#plugin#lazy_options
+    if has_key(a:options, l:opt)
+      return 1
+    endif
+  endfor
+  return 0
+endfunction
+
 function! dein#plugin#add(repo, options) abort
   let plugin = dein#plugin#new(a:repo, a:options)
 
@@ -97,7 +111,7 @@ endfunction
 
 function! dein#plugin#set_hook(name, hook_name, hook_func)
   if !has_key(g:dein#_plugins, a:name)
-    call dein#util#_error(printf('Plugin %s not registered.', a:name))
+    " echo printf('Plugin %s not registered.', a:name)
     return
   endif
   if type(a:hook_func) != v:t_func " if not funcref
@@ -140,15 +154,7 @@ function! s:set_options(plugin, options) abort
   endif
 
   if !has_key(a:options, 'lazy')
-    let a:plugin.lazy =
-          \    has_key(a:options, 'on_ft')
-          \ || has_key(a:options, 'on_cmd')
-          \ || has_key(a:options, 'on_func')
-          \ || has_key(a:options, 'on_map')
-          \ || has_key(a:options, 'on_path')
-          \ || has_key(a:options, 'on_if')
-          \ || has_key(a:options, 'on_event')
-          \ || has_key(a:options, 'on_source')
+    let a:plugin.lazy = s:is_lazy(a:options)
   endif
 
   if has_key(a:options, 'merged')
@@ -167,15 +173,10 @@ function! s:set_options(plugin, options) abort
 endfunction
 
 function! s:set_lazy_handler(plugin, options) abort
-  " Auto convert2list.
-  for key in filter([
-        \ 'on_ft', 'on_path', 'on_cmd', 'on_func', 'on_map',
-        \ 'on_source', 'on_event',
-        \ ], { val -> has_key(a:options, val)
-        \             && type(a:options[val]) != v:t_list
-        \             && type(a:options[val]) != v:t_dict
-        \ })
-    let a:plugin[key] = [a:options[key]]
+  for key in g:dein#plugin#lazy_options
+    if has_key(a:options, key)
+      let a:plugin[key] = deepcopy(a:options[key])
+    endif
   endfor
 
   if has_key(a:options, 'on_event')
@@ -303,7 +304,7 @@ function! dein#plugin#load_all() abort
   endfor
   call dein#rtp#commit()
 
-  " call dein#util#_check_vimrcs()
+  call dein#util#_check_vimrcs()
 
   for [event, plugins] in filter(items(g:dein#_event_plugins),
         \ {k, v -> exists('##' . v[0])})

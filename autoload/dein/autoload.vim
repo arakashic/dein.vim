@@ -5,10 +5,6 @@
 "=============================================================================
 
 function! dein#autoload#_source(...) abort
-  if has('vim_starting')
-    call dein#util#_error('calling autoload#source in vim starting')
-  endif
-
   let plugins = empty(a:000) ? values(g:dein#_plugins) :
         \ dein#util#_convert2list(a:1)
   if empty(plugins)
@@ -90,7 +86,6 @@ function! dein#autoload#_on_default_event(event) abort
   let plugins += filter(copy(lazy_plugins),
         \ "!has_key(v:val, 'on_event')
         \  && has_key(v:val, 'on_if') && eval(v:val.on_if)")
-
   call s:source_events(a:event, plugins)
 endfunction
 

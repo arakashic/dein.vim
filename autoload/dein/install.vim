@@ -237,7 +237,7 @@ function! dein#install#_recache_runtimepath() abort
 
   call s:log([strftime('Runtimepath updated: (%Y/%m/%d %H:%M:%S)')])
 
-  call dein#call_hook('done_update')
+  call dein#call_hook('post_update')
 endfunction
 
 function! s:clear_runtimepath() abort
@@ -971,7 +971,7 @@ function! s:done(context) abort
   call s:notify(s:get_errored_message(a:context.errored_plugins))
 
   if a:context.update_type !=# 'check_update'
-    " call dein#install#_recache_runtimepath()
+    call dein#install#_recache_runtimepath()
   endif
   call s:notify(strftime('Done: (%Y/%m/%d %H:%M:%S)'))
 
