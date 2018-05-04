@@ -159,6 +159,8 @@ function! s:set_options(plugin, options) abort
 
   if !has_key(a:options, 'lazy')
     let a:plugin.lazy = s:is_lazy(a:options)
+  else
+    let a:plugin.lazy = a:options.lazy
   endif
 
   if has_key(a:options, 'merged')
@@ -326,7 +328,6 @@ function! dein#plugin#source(plugin, sourced) abort
   endif
   " echom 'load '.a:plugin.name
 
-  " check if the plugin is enabled
   if !eval(a:plugin.if)
     return
   endif
