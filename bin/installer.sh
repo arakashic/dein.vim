@@ -13,7 +13,7 @@ case $1 in
   /*) PLUGIN_DIR=$1;;
   *) PLUGIN_DIR=$PWD/$1;;
 esac
-INSTALL_DIR="${PLUGIN_DIR}/repos/github.com/Shougo/dein.vim"
+INSTALL_DIR="${PLUGIN_DIR}/repos/github.com/arakashic/dein.vim"
 echo "Install to \"$INSTALL_DIR\"..."
 if [ -e "$INSTALL_DIR" ]; then
   echo "\"$INSTALL_DIR\" already exists!"
@@ -32,7 +32,7 @@ echo ""
 if ! [ -e "$INSTALL_DIR" ]; then
   echo "Begin fetching dein..."
   mkdir -p "$PLUGIN_DIR"
-  git clone https://github.com/Shougo/dein.vim "$INSTALL_DIR"
+  git clone https://github.com/arakashic/dein.vim -b dev "$INSTALL_DIR"
   echo "Done."
   echo ""
 fi
