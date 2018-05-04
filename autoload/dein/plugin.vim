@@ -106,6 +106,9 @@ function! dein#plugin#new(repo, options) abort
     return {}
   endif
 
+  if has_key(a:options, 'build')
+    let new_plugin['build'] = deepcopy(a:options.build)
+  endif
   return new_plugin
 endfunction
 

@@ -111,7 +111,7 @@ function! s:source_events(event, plugins) abort
     return
   endif
 
-  call dein#autoload#_source(a:plugins)
+  let l:sourced = dein#autoload#_source(a:plugins)
 
   if a:event ==# 'InsertCharPre'
     " Queue this key again
