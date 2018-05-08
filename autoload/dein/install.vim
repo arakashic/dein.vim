@@ -335,8 +335,8 @@ endfunction
 
 function! s:check_rollback(plugin) abort
   return !has_key(a:plugin, 'local')
-        \ && !get(a:plugin, 'frozen', 0)
-        \ && get(a:plugin, 'rev', '') ==# ''
+        \ && !get(a:plugin.vcs, 'frozen', 0)
+        \ && get(a:plugin.vcs, 'rev', '') ==# ''
 endfunction
 
 function! dein#install#_get_default_ftplugin() abort
@@ -599,7 +599,7 @@ function! s:lock_revision(process, context) abort
 
   let cmd = type.get_revision_lock_command(plugin)
 
-  if empty(cmd) || plugin.new_rev ==# get(plugin, 'rev', '')
+  if empty(cmd) || plugin.new_rev ==# get(plugin.vcs, 'rev', '')
     " Skipped.
     return 0
   elseif type(cmd) == v:t_string && cmd =~# '^E: '
@@ -609,7 +609,7 @@ function! s:lock_revision(process, context) abort
     return -1
   endif
 
-  if get(plugin, 'rev', '') !=# ''
+  if get(plugin.vcs, 'rev', '') !=# ''
     call s:log(s:get_plugin_message(plugin, num, max, 'Locked'))
   endif
 
@@ -993,7 +993,7 @@ function! s:sync(plugin, context) abort
   let num = a:context.number
   let max = a:context.max_plugins
 
-  if isdirectory(a:plugin.path) && get(a:plugin, 'frozen', 0)
+  if isdirectory(a:plugin.path) && get(a:plugin.vcs, 'frozen', 0)
     " Skip frozen plugin
     call s:updates_log(s:get_plugin_message(
           \ a:plugin, num, max, 'is frozen.'))
@@ -1064,11 +1064,11 @@ function! s:init_process(plugin, context, cmd) abort
       try
         " Force checkout HEAD revision.
         " The repository may be checked out.
-        let a:plugin.rev = ''
+        let a:plugin.vcs.rev = ''
 
         call s:lock_revision(process, a:context)
       finally
-        let a:plugin.rev = rev_save
+        let a:plugin.vcs.rev = rev_save
       endtry
     endif
 
@@ -1130,7 +1130,7 @@ function! s:init_job(process, context, cmd) abort
     let self.candidates = self.eof ? [] : candidates[-1:]
 
     let is_timeout = (localtime() - a:process.start_time)
-          \             >= get(a:process.plugin, 'timeout',
+          \             >= get(a:process.plugin.vcs, 'timeout',
           \                    g:dein#install_process_timeout)
 
     if self.eof
@@ -1174,7 +1174,7 @@ function! s:check_output(context, process) abort
   let plugin = a:process.plugin
 
   if isdirectory(plugin.path)
-        \ && get(plugin, 'rev', '') !=# ''
+        \ && get(plugin.vcs, 'rev', '') !=# ''
         \ && !get(plugin, 'local', 0)
     " Restore revision.
     call s:lock_revision(a:process, a:context)

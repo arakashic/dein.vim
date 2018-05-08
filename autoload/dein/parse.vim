@@ -162,7 +162,7 @@ function! dein#parse#_plugins2toml(plugins) abort
 
   let default = dein#parse#_dict(dein#parse#_init('', {}))
   let default.if = ''
-  let default.frozen = 0
+  let default.vcs.frozen = 0
   let default.local = 0
   let default.depends = []
   let default.on_i = 0

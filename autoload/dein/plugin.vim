@@ -109,6 +109,15 @@ function! dein#plugin#new(repo, options) abort
   if has_key(a:options, 'build')
     let new_plugin['build'] = deepcopy(a:options.build)
   endif
+
+  if has_key(a:options, 'rev')
+    let new_plugin.vcs.rev = a:options.rev
+  endif
+
+  if has_key(a:options, 'frozen')
+    let new_plugin.vcs.frozen = a:options.frozen
+  endif
+
   return new_plugin
 endfunction
 

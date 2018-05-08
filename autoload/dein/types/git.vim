@@ -119,7 +119,7 @@ function! s:type.get_sync_command(plugin) abort
 
     let depth = get(a:plugin, 'type__depth',
           \ g:dein#types#git#clone_depth)
-    if depth > 0 && get(a:plugin, 'rev', '') ==# ''
+    if depth > 0 && get(a:plugin.vcs, 'rev', '') ==# ''
           \ && self.get_uri(a:plugin.repo, a:plugin) !~# '^git@'
       call add(commands, '--depth=' . depth)
     endif
@@ -166,7 +166,7 @@ function! s:type.get_revision_lock_command(plugin) abort
     return []
   endif
 
-  let rev = get(a:plugin, 'rev', '')
+  let rev = get(a:plugin.vcs, 'rev', '')
   if rev =~# '*'
     " Use the released tag (git 1.9.2 or above required)
     let rev = get(split(dein#install#_system(
@@ -196,7 +196,7 @@ function! s:type.get_revision_remote_command(plugin) abort
     return []
   endif
 
-  let rev = get(a:plugin, 'rev', '')
+  let rev = get(a:plugin.vcs, 'rev', '')
   if rev ==# ''
     let rev = 'HEAD'
   endif
