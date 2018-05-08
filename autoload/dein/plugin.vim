@@ -94,16 +94,24 @@ function! dein#plugin#new(repo, options) abort
   let repo = dein#util#expand_path(a:repo)
   let new_plugin = deepcopy(s:plugin_template)
 
-  let l:git_type = s:git.init(a:repo, {})
-  if !empty(git_type)
-    let new_plugin.repo = a:repo
-    let new_plugin.name = s:repo_to_name(a:repo)
-    let new_plugin.type = l:git_type.type
-    let new_plugin.path = dein#util#_chomp(l:git_type.path)
-    let new_plugin.local = l:git_type.local
+  let new_plugin.repo = a:repo
+  let new_plugin.name = s:repo_to_name(a:repo)
+  let l:type = {}
+  for testtype in values(dein#plugin#get_types())
+    let l:type = testtype.init(a:repo, a:options)
+    if !empty(l:type)
+      break
+    endif
+  endfor
+
+  if !empty(l:type)
+    let new_plugin.type = l:type.type
+    let new_plugin.local = l:type.local
+    let new_plugin.path = dein#util#_chomp(l:type.path)
   else
-    call dein#util#_error('Unsupported plugin repo type')
-    return {}
+    let new_plugin.type = 'none'
+    let new_plugin.local = 1
+    let new_plugin.path = isdirectory(a:repo) ? a:repo : ''
   endif
 
   if has_key(a:options, 'build')
@@ -401,6 +409,20 @@ function! s:normalize(name) abort
   return substitute(
         \ fnamemodify(a:name, ':r'),
         \ '\c^n\?vim[_-]\|[_-]n\?vim$', '', 'g')
+endfunction
+
+function! dein#plugin#get_types() abort
+  if !exists('s:types')
+    " Load types.
+    let s:types = {}
+    for type in filter(map(split(globpath(&runtimepath,
+          \ 'autoload/dein/types/*.vim', 1), '\n'),
+          \ "dein#types#{fnamemodify(v:val, ':t:r')}#define()"),
+          \ '!empty(v:val)')
+      let s:types[type.name] = type
+    endfor
+  endif
+  return s:types
 endfunction
 
 " vim: sw=2:ts=2:sts=2:
