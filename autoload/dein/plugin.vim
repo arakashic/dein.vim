@@ -129,20 +129,24 @@ function! dein#plugin#new(repo, options) abort
   return new_plugin
 endfunction
 
-function! dein#plugin#set_hook(name, hook_name, hook_func)
-  if !has_key(g:dein#_plugins, a:name)
-    " echo printf('Plugin %s not registered.', a:name)
-    return
-  endif
-  if type(a:hook_func) != v:t_func " if not funcref
-    call dein#util#_error(printf('hook_func must be FuncRef.', string(a:hook_func)))
-    return
-  endif
-  if has_key(s:hooks_template, a:hook_name)
-    let g:dein#_plugins[a:name].hooks[a:hook_name] = a:hook_func
-  else
-    call dein#util#_error(printf('Invalid hook name %s.', a:hook_name))
-  endif
+function! dein#plugin#set_hook(plugins, hook_name, hook_func)
+  let names = empty(a:plugins) ? keys(dein#get()) :
+        \ dein#util#_convert2list(a:plugins)
+  for name in names
+    if !has_key(g:dein#_plugins, name)
+      " echo printf('Plugin %s not registered.', name)
+      return
+    endif
+    if type(a:hook_func) != v:t_func " if not funcref
+      call dein#util#_error(printf('hook_func must be FuncRef.', string(a:hook_func)))
+      return
+    endif
+    if has_key(s:hooks_template, a:hook_name)
+      let g:dein#_plugins[name].hooks[a:hook_name] = a:hook_func
+    else
+      call dein#util#_error(printf('Invalid hook name %s.', a:hook_name))
+    endif
+  endfor
 endfunction
 
 function! s:set_options(plugin, options) abort
@@ -328,9 +332,10 @@ function! dein#plugin#load_all() abort
 
   for [event, plugins] in filter(items(g:dein#_event_plugins),
         \ {k, v -> exists('##' . v[0])})
-    execute printf('autocmd dein-events %s * call '
+    execute printf('autocmd dein-events %s call '
           \. 'dein#autoload#_on_event("%s", %s)',
-          \ event, event, string(plugins))
+          \ (exists('##' . event) ? event . ' *' : 'User ' . event),
+          \ event, string(plugins))
   endfor
 
   call dein#plugin#post_source(sourced)
@@ -397,6 +402,10 @@ function! dein#plugin#source(plugin, sourced) abort
       silent! execute map[0].'unmap' map[1]
     endfor
     let a:plugin.dummy_mappings = []
+  endif
+
+  if !a:plugin.merged || get(a:plugin, 'local', 0)
+    call dein#rtp#insert(a:plugin.rtp)
   endif
 endfunction
 

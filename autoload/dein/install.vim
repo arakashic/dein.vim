@@ -55,9 +55,12 @@ function! dein#install#_update(plugins, update_type, async) abort
   call s:init_variables(context)
 
   if empty(plugins)
-    call s:notify('Target plugins are not found.')
-    call s:notify('You may have used the wrong plugin name,'.
-          \ ' or all of the plugins are already installed.')
+    if a:update_type !=# 'check_update'
+      call s:notify('Target plugins are not found.')
+      call s:notify('You may have used the wrong plugin name,'.
+            \ ' or all of the plugins are already installed.')
+    endif
+    let s:global_context = {}
     return
   endif
 
@@ -76,11 +79,8 @@ function! dein#install#_update(plugins, update_type, async) abort
     unlet s:timer
   endif
 
-  function! s:timer_handler(timer) abort
-    call dein#install#_polling()
-  endfunction
   let s:timer = timer_start(1000,
-        \ function('s:timer_handler'), {'repeat': -1})
+        \ {-> dein#install#_polling()}, {'repeat': -1})
 endfunction
 
 function! s:update_loop(context) abort
@@ -455,7 +455,7 @@ function! dein#install#_each(cmd, plugins) abort
       endif
     endfor
   catch
-    call s:nonskip_error(v:exception . ' ' . v:throwpoint)
+    call s:error(v:exception . ' ' . v:throwpoint)
     return 1
   finally
     let s:global_context = global_context_save
@@ -995,8 +995,7 @@ function! s:sync(plugin, context) abort
 
   if isdirectory(a:plugin.path) && get(a:plugin.vcs, 'frozen', 0)
     " Skip frozen plugin
-    call s:updates_log(s:get_plugin_message(
-          \ a:plugin, num, max, 'is frozen.'))
+    call s:log(s:get_plugin_message(a:plugin, num, max, 'is frozen.'))
     return
   endif
 
@@ -1006,8 +1005,7 @@ function! s:sync(plugin, context) abort
 
   if empty(cmd)
     " Skip
-    call s:updates_log(
-          \ s:get_plugin_message(a:plugin, num, max, message))
+    call s:log(s:get_plugin_message(a:plugin, num, max, message))
     return
   endif
 
@@ -1296,18 +1294,6 @@ function! s:error(msg) abort
 
   call s:updates_log(msg)
 endfunction
-
-function! s:nonskip_error(msg) abort
-  let msg = dein#util#_convert2list(a:msg)
-  if empty(msg)
-    return
-  endif
-
-  call s:echo_mode(join(msg, "\n"), 'error')
-
-  call s:updates_log(msg)
-endfunction
-
 function! s:notify(msg) abort
   let msg = dein#util#_convert2list(a:msg)
   let context = s:global_context

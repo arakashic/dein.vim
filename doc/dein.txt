@@ -164,11 +164,11 @@ dein#check_lazy_plugins()
 
 							*dein#check_update()*
 dein#check_update([{plugins}])
-		Check the plugins update.
+		Check the plugins update asynchronously.
 		{plugins} is the plugins name list to check.
 		If you omit it, dein will check all plugins update.
-		Note: If you are using neovim or Vim 8.0+, it runs
-		asynchronously.
+		Note: It does not return value instead of
+		|dein#check_install()|.
 
 							*dein#check_clean()*
 dein#check_clean()
@@ -253,11 +253,9 @@ dein#get_updates_log()
 
 							*dein#install()*
 dein#install([{plugins}])
-		Install the plugins.
+		Install the plugins asynchronously.
 		{plugins} is the plugins name list.
 		If you omit it, dein will install all plugins.
-		Note: If you are using neovim or Vim 8.0+ enabled |+job|, it
-		runs asynchronously.
 
 							*dein#is_sourced()*
 dein#is_sourced({plugin-name})
@@ -368,14 +366,21 @@ dein#save_state()
 		call it after change 'runtimepath' dynamically.
 
 							*dein#set_hook()*
-dein#set_hook({plugin-name}, {hook-name}, {hook})
-		Set hook {hook} as {hook-name} in {plugin-name}.
+dein#set_hook({plugins}, {hook-name}, {hook})
+		{plugins} is the plugins name list.
+		If it is empty list, it means all plugins.
+		Set hook {hook} as {hook-name} in {plugins}.
 		It can be called after |dein#begin()| / |dein#end()| block.
+		Note: If it is |Funcref|, it does not work in
+		|dein#load_state()| / |dein#save_state()| block.
 >
 	call dein#add('Shougo/neosnippet.vim', {'lazy': 1})
 	function! Foo() abort
 	endfunction
+	" Does not work for dein#load_state()/dein#save_state() block
 	call dein#set_hook('neosnippet.vim', 'hook_source', function('Foo'))
+	" Does work for dein#load_state()/dein#save_state() block
+	call dein#set_hook('neosnippet.vim', 'hook_source', 'echomsg "foo"')
 <
 							*dein#source()*
 dein#source([{plugins}])
@@ -481,7 +486,8 @@ g:dein#install_log_filename
                                                                  *g:dein#name*
 g:dein#name
 		Current plugin name.
-		You can use it in |dein#tap()| block.
+		You can only use it in |dein#tap()| block.
+		Note: The variable is deprecated.
 
 						*g:dein#notification_icon*
 g:dein#notification_icon
@@ -797,7 +803,9 @@ HOOKS							*dein-hooks*
 
 						*dein-options-hook_add*
 hook_add	(String) or (Function)
-		It is executed after plugins are added.
+		It is executed after the line is parsed.
+		Note: You cannot call plugin function in "hook_add".
+		Because the plugin is not sourced when "hook_add".
 >
 		call dein#add('Shougo/vimfiler.vim', {
 		\ 'hook_add': 'nnoremap <silent>   [Space]v
@@ -834,6 +842,8 @@ hook_post_update (String) or (Function)
 						*dein-options-hook_source*
 hook_source	(String) or (Function)
 		It is executed before plugins are sourced.
+		Note: The "sourced" means after |dein#end()| or when
+		|VimEnter| or autoloaded.
 >
 		call dein#add('artur-shaik/vim-javacomplete2')
 		call dein#config('artur-shaik/vim-javacomplete2', {
@@ -1147,6 +1157,17 @@ Q: I want to change the environment variable when build.
 A: >
 	call dein#add('nixprime/cpsm',
 	\ {'build': 'sh -c "PY3=ON ./install.sh"'})
+
+
+Q: dein.vim does not load plugin in sudo session.
+https://github.com/SpaceVim/SpaceVim/issues/1660
+https://github.com/Shougo/dein.vim/issues/274
+
+A:
+It is intended behavior for security reason.
+In sudo session, installed plugin can do anything in root permission.
+It is very dangerous.
+But you can load trusted plugins using |dein-options-trusted|.
 
 ==============================================================================
 COMPATIBILITY						*dein-compatibility*

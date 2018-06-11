@@ -174,8 +174,10 @@ endfunction
 function! dein#util#_check_clean() abort
   let plugins_directories = map(values(dein#get()), 'v:val.path')
   return filter(split(globpath(dein#util#_get_base_path(),
-        \ 'repos/*/*/*'), "\n"), "isdirectory(v:val)
-        \   && index(plugins_directories, v:val) < 0")
+        \ 'repos/*/*/*'), "\n"),
+        \ "isdirectory(v:val)
+        \  && fnamemodify(v:val, ':t') !=# 'dein.vim'
+        \  && index(plugins_directories, v:val) < 0")
 endfunction
 
 function! dein#util#_writefile(path, list) abort
@@ -330,9 +332,10 @@ function! dein#util#_save_state(is_starting) abort
   " Add events
   for [event, plugins] in filter(items(g:dein#_event_plugins),
         \ "exists('##' . v:val[0])")
-    call add(lines, printf('autocmd dein-events %s * call '
+    call add(lines, printf('autocmd dein-events %s call '
           \. 'dein#autoload#_on_event("%s", %s)',
-          \ event, event, string(plugins)))
+          \ (exists('##' . event) ? event . ' *' : 'User ' . event),
+          \ event, string(plugins)))
   endfor
 
   call writefile(lines, get(g:, 'dein#cache_directory', g:dein#_base_path)
@@ -424,12 +427,13 @@ function! dein#util#_end() abort
   "         call dein#util#_execute_hook({}, g:dein#_hook_add)
   "     endif
 
-  "     for [event, plugins] in filter(items(g:dein#_event_plugins),
-  "                 \ "exists('##' . v:val[0])")
-  "         execute printf('autocmd dein-events %s * call '
-  "                     \. 'dein#autoload#_on_event("%s", %s)',
-  "                     \ event, event, string(plugins))
-  "     endfor
+  " for [event, plugins] in filter(items(g:dein#_event_plugins),
+  "       \ "exists('##' . v:val[0])")
+  "   execute printf('autocmd dein-events %s call '
+  "         \. 'dein#autoload#_on_event("%s", %s)',
+  "         \ (exists('##' . event) ? event . ' *' : 'User ' . event),
+  "         \ event, string(plugins))
+  " endfor
 
   "     if !has('vim_starting')
   "         call dein#util#_call_hook('add')
@@ -485,19 +489,22 @@ function! dein#util#_execute_hook(plugin, hook) abort
     call dein#util#_error(v:exception)
   endtry
 endfunction
-
-function! dein#util#_set_hook(name, hook_name, hook) abort
-  if !has_key(g:dein#_plugins, a:name)
-    call dein#util#_error(a:name . ' is not found.')
-    return 1
-  endif
-  let plugin = g:dein#_plugins[a:name]
-  let plugin[a:hook_name] =
-        \ type(a:hook) != v:t_string ? a:hook :
-        \   substitute(a:hook, '\n\s*\\\|\%(^\|\n\)\s*"[^\n]*', '', 'g')
-  if a:hook_name ==# 'hook_add'
-    call dein#util#_execute_hook(plugin, plugin[a:hook_name])
-  endif
+function! dein#util#_set_hook(plugins, hook_name, hook) abort
+  let names = empty(a:plugins) ? keys(dein#get()) :
+        \ dein#util#_convert2list(a:plugins)
+  for name in names
+    if !has_key(g:dein#_plugins, name)
+      call dein#util#_error(name . ' is not found.')
+      return 1
+    endif
+    let plugin = g:dein#_plugins[name]
+    let plugin[a:hook_name] =
+          \ type(a:hook) != v:t_string ? a:hook :
+          \   substitute(a:hook, '\n\s*\\\|\%(^\|\n\)\s*"[^\n]*', '', 'g')
+    if a:hook_name ==# 'hook_add'
+      call dein#util#_execute_hook(plugin, plugin[a:hook_name])
+    endif
+  endfor
 endfunction
 
 function! dein#util#_sort_by(list, expr) abort
