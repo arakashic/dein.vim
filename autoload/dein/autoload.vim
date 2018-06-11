@@ -95,7 +95,7 @@ endfunction
 
 function! dein#autoload#_on_event(event, plugins) abort
   let lazy_plugins = filter(dein#util#_get_plugins(a:plugins),
-        \ '!v:val.sourced')
+        \ {k, v -> !v.sourced && eval(v.if)})
   if empty(lazy_plugins)
     execute 'autocmd! dein-events' a:event
     return
